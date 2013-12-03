@@ -1,6 +1,6 @@
 /*
  * Universal Password Manager
- * Copyright (c) 2010 Adrian Smith
+ * Copyright (c) 2010-2011 Adrian Smith
  *
  * This file is part of Universal Password Manager.
  *   
@@ -30,6 +30,8 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.AdapterView.AdapterContextMenuInfo;
@@ -37,7 +39,7 @@ import android.widget.AdapterView.AdapterContextMenuInfo;
 import com.u17od.upm.database.AccountInformation;
 import com.u17od.upm.database.PasswordDatabase;
 
-public class AccountsList extends ListActivity {
+public class AccountsList extends ListActivity implements OnItemClickListener {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -67,9 +69,8 @@ public class AccountsList extends ListActivity {
         case R.id.launch_url:
             launchURL(getURL(getAccount(info.targetView)));
             return true;
-        default:
-          return super.onContextItemSelected(item);
-        } 
+        }
+        return super.onContextItemSelected(item);
     }
 
     private void setClipboardText(String text) {
@@ -121,10 +122,12 @@ public class AccountsList extends ListActivity {
         if (Utilities.isSyncRequired(this)) {
             UIUtilities.showToast(this, R.string.sync_required);
         } else {
-            Intent i = new Intent(AccountsList.this, AddEditAccount.class);
-            i.putExtra(AddEditAccount.MODE, AddEditAccount.EDIT_MODE);
-            AddEditAccount.accountToEdit = ai;
-            startActivityForResult(i, AddEditAccount.EDIT_ACCOUNT_REQUEST_CODE);
+            if (ai != null) {
+                Intent i = new Intent(AccountsList.this, AddEditAccount.class);
+                i.putExtra(AddEditAccount.MODE, AddEditAccount.EDIT_MODE);
+                i.putExtra(AddEditAccount.ACCOUNT_TO_EDIT, ai.getAccountName());
+                startActivityForResult(i, AddEditAccount.EDIT_ACCOUNT_REQUEST_CODE);
+            }
         }
     }
 
@@ -138,5 +141,10 @@ public class AccountsList extends ListActivity {
     protected PasswordDatabase getPasswordDatabase() {
         return ((UPMApplication) getApplication()).getPasswordDatabase();
     }
+
+	@Override
+	public void onItemClick(AdapterView<?> arg0, View v, int position, long id) {
+		onListItemClick(null, v, position, id);
+	}
 
 }

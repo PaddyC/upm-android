@@ -1,6 +1,6 @@
 /*
  * Universal Password Manager
- * Copyright (c) 2010 Adrian Smith
+ * Copyright (c) 2010-2011 Adrian Smith
  *
  * This file is part of Universal Password Manager.
  *   
@@ -30,6 +30,7 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.WindowManager.LayoutParams;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -48,6 +49,9 @@ public class ViewAccountDetails extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (Utilities.VERSION.SDK_INT >= Utilities.VERSION_CODES.HONEYCOMB) {
+            getWindow().setFlags(LayoutParams.FLAG_SECURE, LayoutParams.FLAG_SECURE);
+        }
         setContentView(R.layout.view_account_details);
     }
 
@@ -86,7 +90,7 @@ public class ViewAccountDetails extends Activity {
             } else {
                 Intent i = new Intent(ViewAccountDetails.this, AddEditAccount.class);
                 i.putExtra(AddEditAccount.MODE, AddEditAccount.EDIT_MODE);
-                AddEditAccount.accountToEdit = account;
+                i.putExtra(AddEditAccount.ACCOUNT_TO_EDIT, account.getAccountName());
                 startActivityForResult(i, AddEditAccount.EDIT_ACCOUNT_REQUEST_CODE);
             }
             break;
@@ -122,6 +126,9 @@ public class ViewAccountDetails extends Activity {
                             public void execute() {
                                 String message = String.format(getString(R.string.account_deleted), accountName);
                                 Toast.makeText(ViewAccountDetails.this, message, Toast.LENGTH_SHORT).show();
+                                // Set this flag so that when we're returned to the FullAccountList
+                                // activity the list is refreshed
+                                ViewAccountDetails.this.setResult(AddEditAccount.EDIT_ACCOUNT_RESULT_CODE_TRUE);
                                 finish();
                             }
                         }).execute(getPasswordDatabase());

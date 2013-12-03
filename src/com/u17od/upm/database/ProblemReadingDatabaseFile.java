@@ -1,6 +1,6 @@
 /*
  * Universal Password Manager
- * Copyright (c) 2010 Adrian Smith
+ * Copyright (c) 2010-2011 Adrian Smith
  *
  * This file is part of Universal Password Manager.
  *   
@@ -21,6 +21,7 @@
 package com.u17od.upm.database;
 
 
+@SuppressWarnings("serial")
 public class ProblemReadingDatabaseFile extends Exception {
     
     public ProblemReadingDatabaseFile(String message) {

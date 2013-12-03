@@ -1,6 +1,6 @@
 /*
  * Universal Password Manager
- * Copyright (c) 2010 Adrian Smith
+ * Copyright (c) 2010-2011 Adrian Smith
  *
  * This file is part of Universal Password Manager.
  *   
@@ -20,10 +20,13 @@
  */
 package com.u17od.upm.util;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.Charset;
 
 
 public class Util {
@@ -65,12 +68,19 @@ public class Util {
     
         // Ensure all the bytes have been read in
         if (offset < bytes.length) {
+            is.close();
             throw new IOException("Could not completely read file " + file.getName());
         }
-    
+
         is.close();
 
         return bytes;
+    }
+
+    public static Charset defaultCharset() {
+        return Charset.forName(
+                new OutputStreamWriter(
+                        new ByteArrayOutputStream()).getEncoding());
     }
 
 }

@@ -1,6 +1,6 @@
 /*
  * Universal Password Manager
- * Copyright (c) 2010 Adrian Smith
+ * Copyright (c) 2010-2011 Adrian Smith
  *
  * This file is part of Universal Password Manager.
  *   
@@ -24,9 +24,12 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.WindowManager.LayoutParams;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -42,11 +45,13 @@ public class AddEditAccount extends Activity implements OnClickListener {
     public static final int EDIT_MODE = 1;
     public static final int ADD_MODE = 2;
 
-    public static final int EDIT_ACCOUNT_RESULT_CODE_TRUE = 1;
+    public static final String ACCOUNT_TO_EDIT = "ACCOUNT_TO_EDIT";
+
+    public static final int EDIT_ACCOUNT_RESULT_CODE_TRUE = 25;
     public static final int EDIT_ACCOUNT_REQUEST_CODE = 223;
+    public static final int OPEN_DATABASE_REQUEST_CODE = 225;
 
-    public static AccountInformation accountToEdit;
-
+    private String accountToEdit;
     private int mode;
 
     private Button saveButton;
@@ -60,6 +65,9 @@ public class AddEditAccount extends Activity implements OnClickListener {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (Utilities.VERSION.SDK_INT >= Utilities.VERSION_CODES.HONEYCOMB) {
+            getWindow().setFlags(LayoutParams.FLAG_SECURE, LayoutParams.FLAG_SECURE);
+        }
         setContentView(R.layout.add_edit_account_details);
 
         saveButton = (Button) findViewById(R.id.save_button);
@@ -76,21 +84,62 @@ public class AddEditAccount extends Activity implements OnClickListener {
         // Were we called to Add/Edit an Account
         Bundle extras = getIntent().getExtras();
         mode = extras.getInt(MODE);
+        accountToEdit = extras.getString(ACCOUNT_TO_EDIT);
+    }
 
-        // Set the title based on weather we were called to Edit/Add
-        if (mode == EDIT_MODE) {
-            setTitle(getString(R.string.edit_account));
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (getPasswordDatabase() == null) {
+            // If we don't have a database (maybe UPM's process was terminated
+            // since we were last here) we need to show the EnterMasterPassword
+            // activity so the user can enter their master password and open
+            // the password database.
+            EnterMasterPassword.databaseFileToDecrypt = Utilities.getDatabaseFile(this);
+            Intent enterMasterPasswordIntent = new Intent(this, EnterMasterPassword.class);
+            startActivityForResult(enterMasterPasswordIntent, OPEN_DATABASE_REQUEST_CODE);
+        } else {
 
-            originalAccountName = accountToEdit.getAccountName();
+            // Set the title based on weather we were called to Edit/Add
+            if (mode == EDIT_MODE) {
+                setTitle(getString(R.string.edit_account));
 
-            // Populate the form with the account to edit
-            accountName.setText(accountToEdit.getAccountName());
-            userid.setText(new String(accountToEdit.getUserId()));
-            password.setText(new String(accountToEdit.getPassword()));
-            url.setText(new String(accountToEdit.getUrl()));
-            notes.setText(new String(accountToEdit.getNotes()));
-        } else { // must be add
-            setTitle(getString(R.string.add_account));
+                AccountInformation accountToEdit =
+                        getPasswordDatabase().getAccount(this.accountToEdit);
+
+                // Populate the on-screen fields. If accountToEdit should happen
+                // to be null (for some unknown reason) close the activity to
+                // return to the FullAccountList.
+                if (accountToEdit != null) {
+                    originalAccountName = accountToEdit.getAccountName();
+
+                    // Populate the form with the account to edit
+                    accountName.setText(accountToEdit.getAccountName());
+                    userid.setText(new String(accountToEdit.getUserId()));
+                    password.setText(new String(accountToEdit.getPassword()));
+                    url.setText(new String(accountToEdit.getUrl()));
+                    notes.setText(new String(accountToEdit.getNotes()));
+                } else {
+                    Log.w("AddEditAccount", "accountToEdit was unexpectedly null");
+                    this.finish();
+                }
+            } else { // must be add
+                setTitle(getString(R.string.add_account));
+            }
+
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        /*
+         * If the database was successfully opened then make it available
+         * on the Application
+         */
+        if (requestCode == OPEN_DATABASE_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                ((UPMApplication) getApplication()).setPasswordDatabase(EnterMasterPassword.decryptedPasswordDatabase);
+            }
         }
     }
 
@@ -108,6 +157,9 @@ public class AddEditAccount extends Activity implements OnClickListener {
                 
                 // If editing this account then ensure another account doesn't exist with this same name
                 if (mode == EDIT_MODE) {
+
+                    AccountInformation accountToEdit =
+                            getPasswordDatabase().getAccount(this.accountToEdit);
 
                     AccountInformation secondAccount = getPasswordDatabase().getAccount(accountNameStr);
                     if (secondAccount != null && secondAccount != accountToEdit) {
@@ -135,10 +187,10 @@ public class AddEditAccount extends Activity implements OnClickListener {
     }
 
     private void saveAccount(final String accountName) {
-        byte[] useridBytes = userid.getText().toString().getBytes();
-        byte[] passwordBytes = password.getText().toString().getBytes();
-        byte[] urlBytes = url.getText().toString().getBytes();
-        byte[] notesBytes = notes.getText().toString().getBytes();
+        String useridBytes = userid.getText().toString();
+        String passwordBytes = password.getText().toString();
+        String urlBytes = url.getText().toString();
+        String notesBytes = notes.getText().toString();
 
         AccountInformation ai = new AccountInformation(
                 accountName, useridBytes,
@@ -146,7 +198,7 @@ public class AddEditAccount extends Activity implements OnClickListener {
         
         // If editing an account then delete the exiting one before adding it again
         if (mode == EDIT_MODE) {
-            getPasswordDatabase().deleteAccount(accountToEdit.getAccountName());
+            getPasswordDatabase().deleteAccount(this.accountToEdit);
             // Put the edited account back on the ViewAccountDetails
             // activity so that the view can be re-populated with the
             // edited details

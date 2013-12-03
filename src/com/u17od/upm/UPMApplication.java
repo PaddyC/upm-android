@@ -1,6 +1,6 @@
 /*
  * Universal Password Manager
- * Copyright (c) 2010 Adrian Smith
+ * Copyright (c) 2010-2011 Adrian Smith
  *
  * This file is part of Universal Password Manager.
  *   
@@ -60,11 +60,16 @@ public class UPMApplication extends Application {
         return passwordDatabase;
     }
 
-    protected void copyFile(File source, File dest, Activity activity) {
+    protected boolean copyFile(File source, File dest, Activity activity) {
+        boolean successful = false;
+
         FileChannel sourceChannel = null;
         FileChannel destinationChannel = null;
+        FileInputStream is = null;
+        FileOutputStream os = null;
         try {
-            sourceChannel = new FileInputStream(source).getChannel();
+            is = new FileInputStream(source);
+            sourceChannel = is.getChannel();
 
             File destFile = null;
             if (dest.isDirectory()) {
@@ -73,8 +78,11 @@ public class UPMApplication extends Application {
                 destFile = dest;
             }
 
-            destinationChannel = new FileOutputStream(destFile).getChannel();
+            os = new FileOutputStream(destFile);
+            destinationChannel = os.getChannel();
             destinationChannel.transferFrom(sourceChannel, 0, sourceChannel.size());
+
+            successful=true;
         } catch (IOException e) {
             Log.e(activity.getClass().getName(), getString(R.string.file_problem), e);
             Toast.makeText(activity, R.string.file_problem, Toast.LENGTH_LONG).show();
@@ -83,14 +91,22 @@ public class UPMApplication extends Application {
                 if (sourceChannel != null) {
                     sourceChannel.close();
                 }
+                if (is != null) {
+                    is.close();
+                }
                 if (destinationChannel != null) {
                     destinationChannel.close();
+                }
+                if (os != null) {
+                    os.close();
                 }
             } catch (IOException e) {
                 Log.e(activity.getClass().getName(), getString(R.string.file_problem), e);
                 Toast.makeText(activity, R.string.file_problem, Toast.LENGTH_LONG).show();
             }
         }
+
+        return successful;
     }
 
     protected void restoreDatabase(Activity activity) {

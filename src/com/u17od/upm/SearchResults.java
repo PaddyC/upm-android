@@ -1,6 +1,6 @@
 /*
  * Universal Password Manager
- * Copyright (c) 2010 Adrian Smith
+ * Copyright (c) 2010-2011 Adrian Smith
  *
  * This file is part of Universal Password Manager.
  *   
@@ -46,7 +46,12 @@ public class SearchResults extends AccountsList {
     @Override
     public void onResume() {
         super.onResume();
-        doSearch();
+        // If the pw database is null then just close the activity.
+        if (getPasswordDatabase() == null) {
+            finish();
+        } else {
+            doSearch();
+        }
     }
 
     private void doSearch() {
